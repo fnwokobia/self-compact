@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Note-first compaction prototype</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f5f4f0;color:#26302e;font:16px/1.55 system-ui,sans-serif}main{max-width:1000px;margin:45px auto;padding:0 24px}h1{font-size:36px;line-height:1.2;letter-spacing:-1px}h2{font-size:20px}p{max-width:800px}.tag{font-size:12px;letter-spacing:1.5px;color:#537969;font-weight:700}.panel{background:white;border:1px solid #dedfd8;border-radius:12px;padding:24px;margin:20px 0}.grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}dl{display:grid;grid-template-columns:155px 1fr;gap:8px;margin:0}dt{color:#69736f}dd{margin:0;font-weight:600}button{background:white;border:1px solid #c7d1c9;border-radius:6px;padding:10px 13px;font:inherit;cursor:pointer;margin:4px}button:hover{background:#eef4ee}button.active,.primary{background:#285e49;color:white}button:disabled{opacity:.5;cursor:default}textarea{width:100%;min-height:140px;border:1px solid #c7d1c9;border-radius:6px;padding:12px;font:14px/1.5 ui-monospace,monospace}pre{white-space:pre-wrap;overflow-wrap:anywhere;font:13px/1.6 ui-monospace,monospace;background:#f6f7f3;padding:15px;border-radius:6px;max-height:300px;overflow:auto}.explain{color:#65726a}.warning{border-left:4px solid #c18b35;padding-left:16px}.meter{height:12px;background:#e9ede6;border-radius:8px;overflow:hidden;margin-bottom:20px}.fill{height:100%;background:#478468;transition:none}@media(max-width:700px){.grid{grid-template-columns:1fr}h1{font-size:28px}dl{grid-template-columns:130px 1fr}}
+</style>
+<main>
+<div class="tag">THROWAWAY PROTOTYPE · SIMULATION</div>
+<h1>Save the note. Then compact.</h1>
+<p>Can our controller guarantee that a complete note is saved before it requests compaction? Explore the ordering below. This page simulates the lifecycle; the separate Python experiment connects to a real Codex app server.</p>
+<p class="warning">The ordering guarantee covers compaction requested by our controller. Codex’s independent native trigger is a separate integration question.</p>
+<section class="panel"><h2>Current state</h2><div class="meter"><div class="fill" id="meter"></div></div><dl id="state"></dl><p id="feedback" aria-live="polite"></p></section>
+<div class="grid"><section class="panel"><h2>Try any action</h2><p class="explain">Example thresholds: notice 40%, warning 55%, compaction request 65%. Crossing 65% requires a note; it does not bypass the save step.</p><div id="actions"></div><h2>Your handoff note</h2><textarea id="note" aria-label="Handoff note">Goal: finish the requested change.
+Done: implementation is complete.
+Verification: review is still pending.
+NEXT ACTION: review the diff; do not redo completed work.</textarea></section>
+<section class="panel"><h2>Event history</h2><pre id="history"></pre><h2>Restored note</h2><pre id="restored">No note restored yet.</pre></section></div>
+<section class="panel"><h2>Guided walkthroughs</h2><div id="tabs" role="group" aria-label="Choose a scenario"></div><p id="description"></p><div id="steps"></div></section>
+<p class="explain">No persistence, provider keys, model calls or automatic actions occur in this page. Reloading clears the simulation.</p>
+</main>
+<script>
+// Pure state transition function: DOM-free and intentionally small.
+const initial=()=>({usage:0,phase:'Working',note:null,restored:null,turnIdle:false,cycle:0,nativeEarly:false,log:[],feedback:'Ready. Choose a scenario or explore freely.'});
+function reduce(previous,action,noteText=''){
+ const s=structuredClone(previous);let message='';
+ switch(action){
+ case 'reset':return initial();
+ case 'notice':s.usage=40;message='Notice: context has reached 40%.';break;
+ case 'warning':s.usage=55;message='Warning: finish your current step and compose a handoff note.';break;
+ case 'cutoff':s.usage=65;message='Threshold reached. Waiting for a complete note before requesting compaction.';break;
+ case 'save':
+  if(!['Working','Failed'].includes(s.phase)){message='Refused: a handoff is already pending.';break;}
+  if(!noteText.trim()||noteText.length>24000){message='Refused: note must be nonblank and at most 24,000 characters.';break;}
+  s.note=noteText;s.phase='Note saved';message='Complete note saved and verified. Compaction has not started.';break;
+ case 'saveFailure':message='Saving failed. No new note committed; compaction is not requested.';break;
+ case 'idle':s.turnIdle=true;message='The tool returned and the model turn ended. The controller can now act.';break;
+ case 'compact':
+  if(s.phase!=='Note saved'||s.note===null){message='Refused: save a complete note first.';break;}
+  if(!s.turnIdle){message='Deferred: wait until the tool call and current turn finish.';break;}
+  s.phase='Compacting';message='Controller requests compaction of this same session.';break;
+ case 'success':
+  if(s.phase!=='Compacting'){message='Refused: no compaction is running.';break;}
+  s.phase='Ready to restore';s.usage=15;message='Compaction completion confirmed. Original note retained.';break;
+ case 'fail':
+  if(s.phase!=='Compacting'){message='Refused: no compaction is running.';break;}
+  s.phase='Failed';message='Compaction failed. Original note retained; continuation has not started.';break;
+ case 'restore':
+  if(s.phase!=='Ready to restore'){message='Refused: successful compaction must be confirmed first.';break;}
+  s.restored=s.note;s.phase='Continuing';s.cycle++;message='Exact original note restored; the next model turn follows its next action.';break;
+ case 'native':s.nativeEarly=true;message='Independent native compaction fired. Our controller cannot establish exclusive ordering in this scenario.';break;
+ }
+ s.feedback=message;s.log.push(message);return s;
+}
+const labels={notice:'Reach notice',warning:'Reach warning',cutoff:'Reach compaction threshold',save:'Save complete note',saveFailure:'Simulate save failure',idle:'Finish current turn',compact:'Request compaction',success:'Confirm compaction success',fail:'Simulate compaction failure',restore:'Restore and continue',native:'Simulate native preemption',reset:'Reset'};
+const scenarios=[
+ {name:'Successful handoff',description:'The controller saves the note, waits for the current turn, compacts, then restores the exact text.',steps:['notice','warning','cutoff','save','idle','compact','success','restore']},
+ {name:'Save failure',description:'Try requesting compaction before a note exists, then simulate a failed write. Both leave the controller unable to compact.',steps:['cutoff','compact','saveFailure','compact','save','idle','compact','success','restore']},
+ {name:'Compaction failure',description:'A failed compaction retains the note. Retry the transaction and restore only after confirmed success.',steps:['save','idle','compact','fail','restore','save','compact','success','restore']},
+ {name:'Native preemption',description:'A competing native trigger can fire before our controller has a note. This is why desktop runtime access and trigger coordination require a separate proof.',steps:['warning','native','save']}
+];
+let state=initial(),scenario=0,step=0;
+const el=id=>document.getElementById(id);
+function act(action){state=reduce(state,action,el('note').value);render();}
+function render(){
+ el('meter').style.width=state.usage+'%';
+ el('state').replaceChildren();
+ for(const [key,value] of Object.entries({'Context usage':state.usage+'%','Lifecycle phase':state.phase,'Note saved':state.note===null?'No':state.note.length+' characters','Current turn':state.turnIdle?'Finished':'Active / not finished','Completed cycles':state.cycle,'Native preemption':state.nativeEarly?'Observed in simulation':'Not observed'})){const dt=document.createElement('dt'),dd=document.createElement('dd');dt.textContent=key;dd.textContent=value;el('state').append(dt,dd);}
+ el('feedback').textContent=state.feedback;el('history').textContent=state.log.map((x,i)=>(i+1)+'. '+x).join('\n')||'No events yet.';el('restored').textContent=state.restored??'No note restored yet.';
+ el('description').textContent=scenarios[scenario].description;el('tabs').replaceChildren();
+ scenarios.forEach((s,i)=>{const b=document.createElement('button');b.textContent=s.name;b.className=i===scenario?'active':'';b.onclick=()=>{scenario=i;step=0;state=initial();render()};el('tabs').append(b)});
+ el('steps').replaceChildren();scenarios[scenario].steps.forEach((a,i)=>{const b=document.createElement('button');b.textContent=(i+1)+'. '+labels[a];b.disabled=i!==step;b.onclick=()=>{step++;act(a)};el('steps').append(b)});
+}
+Object.entries(labels).forEach(([action,label])=>{const b=document.createElement('button');b.textContent=label;b.onclick=()=>{if(action==='reset')step=0;act(action)};el('actions').append(b)});render();
+</script></html>

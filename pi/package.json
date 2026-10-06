@@ -1,0 +1,38 @@
+{
+  "name": "pi-self-compact",
+  "version": "0.1.1",
+  "type": "module",
+  "description": "Configurable note-first self-compaction extension for Pi; adapted from disler/self-compact-pi-agent.",
+  "license": "MIT",
+  "keywords": [
+    "pi-package"
+  ],
+  "pi": {
+    "extensions": [
+      "./extensions/self-compact/self-compact.ts"
+    ]
+  },
+  "files": [
+    "extensions/",
+    ".pi/self-compact/",
+    "config.json",
+    "LICENSE",
+    "README.md",
+    "NOTICE.md"
+  ],
+  "scripts": {
+    "test": "node --test tests/unit/*.test.ts && node --test --test-concurrency=1 tests/e2e/*.test.ts",
+    "test:unit": "node --test tests/unit/*.test.ts",
+    "test:e2e": "node --test --test-concurrency=1 tests/e2e/*.test.ts",
+    "package": "python3 scripts/package.py"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": ">=0.85.1",
+    "@earendil-works/pi-ai": "*",
+    "@earendil-works/pi-tui": "*",
+    "typebox": "*"
+  }
+}

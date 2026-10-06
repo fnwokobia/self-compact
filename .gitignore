@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+node_modules/
+.DS_Store
+.env
+.env.*
+!.env.example
+pi/verification/
+pi/dist/
+prototype/evidence/
+evidence/*
+!evidence/pi-build-verification.json

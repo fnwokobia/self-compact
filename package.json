@@ -1,0 +1,11 @@
+{
+  "name": "self-compact",
+  "version": "0.1.1",
+  "private": true,
+  "type": "module",
+  "description": "Configurable self-compaction for Pi and Codex CLI.",
+  "keywords": ["pi-package"],
+  "pi": {
+    "extensions": ["./pi/extensions/self-compact/self-compact.ts"]
+  }
+}

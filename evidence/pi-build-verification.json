@@ -1,0 +1,33 @@
+{
+  "date": "2026-10-06",
+  "pi_version": "0.85.1",
+  "node_version": "26.7.0",
+  "unit_tests_passed": 35,
+  "offline_integration_tests_passed": 11,
+  "integration_run": "10-test full suite plus separately passed package-manifest test",
+  "provider": "offline scripted; zero paid API calls",
+  "personal_installation_performed": false,
+  "configuration_auto_loaded": true,
+  "lifecycle": {
+    "phases": [
+      "notice",
+      "warning",
+      "forced"
+    ],
+    "handoff_count": 1,
+    "note_exact": true,
+    "note_sha256": "e4e8935ac8dfd607bb1a265270c464e3f378dbef01f621e0025894957b684cd6",
+    "continuation_result": "done"
+  },
+  "package": "pi/dist/pi-self-compact-0.1.0.tgz",
+  "distribution_v0_1_1": {
+    "unit_tests_passed": 35,
+    "integration_tests_passed": 12,
+    "run": "npm test: full suite passed together",
+    "relocation_test": "Both archives extracted outside checkout; bundled config and prompts loaded; runtime completed exact-note compaction and continuation",
+    "source_archive": "pi/dist/pi-self-compact-0.1.1-source.tar.gz",
+    "runtime_archive": "pi/dist/pi-self-compact-0.1.1.tgz",
+    "published": false,
+    "personal_installation_performed": false
+  }
+}

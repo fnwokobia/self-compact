@@ -1,0 +1,9 @@
+{
+  "notice": "40%",
+  "warning": "55%",
+  "compact": "65%",
+  "context_window": 258400,
+  "max_note_chars": 12000,
+  "checkpoint_chars": 16000,
+  "note_instructions": "Preserve the user's goal and constraints, decisions, changed files, validation results, unfinished work, and a concrete next action. Do not include credentials."
+}

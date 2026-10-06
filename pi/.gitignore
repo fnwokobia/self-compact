@@ -1,0 +1,5 @@
+verification/
+dist/
+tsconfig.tsc.json
+node_modules/
+*.tgz

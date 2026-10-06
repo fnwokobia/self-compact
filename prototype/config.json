@@ -1,0 +1,6 @@
+{
+  "notice": "40%",
+  "warning": "55%",
+  "compact": "65%",
+  "max_note_chars": 24000
+}

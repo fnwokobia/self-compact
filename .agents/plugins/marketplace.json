@@ -1,0 +1,17 @@
+{
+  "name": "self-compact-local",
+  "plugins": [
+    {
+      "name": "self-compact",
+      "source": {
+        "source": "local",
+        "path": "./plugins/self-compact"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}
