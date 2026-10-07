@@ -1,0 +1,28 @@
+#!/bin/sh
+# Management only: installed hooks run inside ordinary Codex sessions.
+set -eu
+ROOT=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+if ! command -v python3 >/dev/null 2>&1; then
+  echo "Self-compact needs Python 3.11 or later installed." >&2
+  exit 1
+fi
+if ! python3 -c 'import sys; sys.exit(0 if sys.version_info >= (3, 11) else 1)'; then
+  echo "Self-compact management needs Python 3.11 or later." >&2
+  exit 1
+fi
+case "${1:-help}" in
+  status)
+    shift
+    exec python3 "$ROOT/plugins/self-compact/scripts/self_compact.py" status "$@"
+    ;;
+  install|configure|uninstall|show)
+    exec python3 "$ROOT/plugins/self-compact/scripts/setup.py" "$@"
+    ;;
+  help|--help|-h)
+    echo "Usage: ./self-compact {install|configure|show|status|uninstall} [options]"
+    echo "After installation, start Codex normally with: codex"
+    echo "Configuration options: --notice 40% --warning 55% --compact 65%"
+    echo "                       --context-window TOKENS --note-instructions TEXT"
+    ;;
+  *) echo "Unknown command: $1. Run ./self-compact --help." >&2; exit 2 ;;
+esac

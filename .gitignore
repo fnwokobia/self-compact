@@ -10,3 +10,10 @@ pi/dist/
 prototype/evidence/
 evidence/*
 !evidence/pi-build-verification.json
+
+# Local development artifacts are retained locally, not distributed.
+tests/
+pi/tests/
+prototype/
+RESEARCH.md
+evidence/

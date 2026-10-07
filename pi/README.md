@@ -69,27 +69,35 @@ This retains upstream behavior: the agent may compact voluntarily at the warning
 
 Requires Pi 0.85.1 or a compatible later version and Node 24+. Use your existing Pi model/provider authentication.
 
-Once this standalone package is uploaded to a GitHub repository, anyone can install it with:
+Install this repository directly:
 
 ```sh
-pi install git:github.com/OWNER/pi-self-compact
+pi install git:github.com/fnwokobia/self-compact
 ```
 
-Replace `OWNER/pi-self-compact` with the actual repository. That is a template, not an existing published repository. Pi clones the repository into its own managed package directory and registers the extension. Users do not reproduce the author's directory structure. Restart Pi, then enter `/self-compact-info` to confirm the extension and thresholds loaded.
+Pi clones the repository into its managed package directory and registers the extension. Restart Pi, then enter `/self-compact-info` to confirm the extension and thresholds loaded.
 
-For a tagged release:
+Uninstall:
 
 ```sh
-pi install git:github.com/OWNER/pi-self-compact@v0.1.1
+pi remove git:github.com/fnwokobia/self-compact
 ```
 
-To try the GitHub package for one session, use `pi -e git:github.com/OWNER/pi-self-compact`. To uninstall it, use `pi remove git:github.com/OWNER/pi-self-compact`.
+Restart Pi after removal.
+
+If a release tag has been published (v0.1.1 is an example, not a published tag):
+
+```sh
+pi install git:github.com/fnwokobia/self-compact@v0.1.1
+```
+
+To try the GitHub package for one session, use `pi -e git:github.com/fnwokobia/self-compact`. To uninstall it, use `pi remove git:github.com/fnwokobia/self-compact`.
 
 Keep personal configuration in `~/.pi/agent/self-compact/config.json` or project `.pi/self-compact/config.json`, so replacing or updating the package preserves your preferences. No threshold flags are needed on each launch. Avoid loading two self-compaction extensions in one session.
 
 ## Share this package
 
-`dist/pi-self-compact-0.1.1-source.tar.gz` is a standalone repository archive. Extract it anywhere; its top-level `pi-self-compact/` folder contains the manifest, extension, prompts, configuration, MIT license, tests, and packaging script. Upload **the contents of that folder to your GitHub repository root**, including the hidden `.pi/` folder. Do not upload the enclosing Codex project or nest this package under another `pi/` directory. No owner-specific paths or credentials are included.
+`dist/pi-self-compact-0.1.1-source.tar.gz` is a standalone repository archive. Extract it anywhere; its top-level `pi-self-compact/` folder contains the manifest, extension, prompts, configuration, MIT license and packaging script. Upload **the contents of that folder to your GitHub repository root**, including the hidden `.pi/` folder. Do not upload the enclosing Codex project or nest this package under another `pi/` directory. No owner-specific paths or credentials are included.
 
 For direct file sharing without GitHub:
 
@@ -102,20 +110,11 @@ A local installation registers that chosen folder in place. Keep it there; the f
 
 The smaller `dist/pi-self-compact-0.1.1.tgz` is an npm-format runtime archive, also self-contained. Its extracted root is named `package/`; register that extracted folder with `pi install ./package`. Neither archive needs npm dependencies installed for local loading: Pi supplies the extension runtime modules.
 
-This package is ready for GitHub distribution; it has not been uploaded, published to npm, or installed on your machine. If you later publish it to npm under an available name, Pi also supports `pi install npm:PACKAGE_NAME`.
+The source is distributed through this GitHub repository. It is not published to npm. If you later publish it to npm under an available name, Pi also supports `pi install npm:PACKAGE_NAME`.
 
 ## Verification
 
-```sh
-cd pi-self-compact
-npm test
-```
-
-Tests use the real installed Pi CLI in RPC mode with an offline scripted provider and isolated test profiles under `verification/`. They neither install the extension nor load your credentials. They cover file loading, CLI precedence, model-window changes, threshold crossings, tool locking, sibling tool calls, exact note preservation, continuation, two cycles, failed compaction, and recovery. Unit tests check footer rendering; interactive terminal rendering and paid-model behavior are not claimed by these offline tests.
-
-Build verification on 6 October 2026: **35 unit tests and 12 offline integration tests passed together** on Pi 0.85.1 and Node 26.7.0. The distribution test builds the archives from a relocated checkout, extracts both into unrelated directories, verifies automatic configuration and shipped prompt loading, and runs the runtime archive through threshold crossings, exact note preservation, compaction, and automatic continuation. No personal Pi installation is performed.
-
-For distribution, the package includes a `pi.extensions` manifest and can be packed as a tarball without installing dependencies. Pi supplies its core runtime packages.
+Development verification used Pi 0.85.1 with an offline scripted provider: 35 unit tests and 12 integration tests passed, including loading relocated archives and a full note-first compaction cycle. Test harnesses and generated traces are excluded from the shared source tree. Paid-model behavior and interactive terminal rendering were not verified by those offline tests.
 
 ## Build distribution archives
 

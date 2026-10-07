@@ -1,85 +1,78 @@
 # Self-compact for Pi and Codex CLI
 
-This private repository also exposes the Pi extension directly through its root package manifest. With GitHub access, install it using `pi install git:github.com/fnwokobia/self-compact`, then restart Pi. Pi manages the clone location. Configure personal thresholds in `~/.pi/agent/self-compact/config.json`; see [Pi documentation](pi/README.md) for behavior and configuration. Building or publishing this repository does not install either extension.
+Configurable context notices, warnings, and durable handoff notes around compaction. This repository contains the Pi extension and the Codex CLI hook plugin source.
 
-The separately built **Pi extension** is documented in [pi/README.md](pi/README.md). It supports direct control of the handoff, tool lock, compaction, and continuation. Its standalone GitHub-ready source archive is [pi-self-compact-0.1.1-source.tar.gz](pi/dist/pi-self-compact-0.1.1-source.tar.gz); unpack its contents at a repository root for portable `pi install git:github.com/OWNER/REPO` distribution. Neither version is currently installed by this project.
+## Pi
 
-A local plugin for the normal `codex` command. No replacement terminal, app-server companion, Justfile, API key, or npm dependencies are required. Hook runtime requires Python 3.9+ on macOS/Linux; setup requires Python 3.11+.
+Requires Pi 0.85.1 or a compatible later release and Node 24+.
 
-The plugin is packaged under `plugins/self-compact` and advertised by this repository's `.agents/plugins/marketplace.json`.
-
-**Build-only status:** the source and tests are complete. The personal installation and native configuration changes have been rolled back. Installation below is an optional, separate action that changes Codex user configuration.
-
-## Use
-
-When you choose to install, install and configure:
+Install:
 
 ```sh
-python3 plugins/self-compact/scripts/setup.py install --context-window 258400
+pi install git:github.com/fnwokobia/self-compact
 ```
 
-Start a new ordinary `codex` session, run `/hooks`, and review/trust the self-compact hooks. Codex requires this one-time trust step for non-managed plugin hooks. The installer does not bypass it. Existing running sessions do not pick up the new native cutoff.
+Restart Pi, then use `/self-compact-info` to inspect the loaded extension and thresholds. The extension runs automatically during normal Pi use.
 
-Example defaults are notice **40%**, warning **55%**, compaction **65%**. These are demonstration values, not benchmark-derived recommendations. With a 258,400-token effective window, the native cutoff is **167,960 active-context tokens**.
-
-Change thresholds without reinstalling:
+Uninstall:
 
 ```sh
-python3 plugins/self-compact/scripts/setup.py configure \
-  --notice '50%' --warning '65%' --compact '75%' --context-window 258400
+pi remove git:github.com/fnwokobia/self-compact
 ```
 
-Thresholds also accept absolute token counts, such as `--compact 180000`. Configuration is saved to `~/.codex/self-compact/config.json`, loaded automatically by the hooks, and kept outside the installed plugin cache so upgrades preserve it. `CODEX_HOME`, if already configured, is respected. The installer updates the native cutoff in `config.toml` and saves a backup first. Restart Codex after changing the compaction cutoff.
+Restart Pi after removal. Personal thresholds and note instructions belong in `~/.pi/agent/self-compact/config.json`; see [Pi configuration and behavior](pi/README.md).
 
-Customize what your note preserves:
+## Codex CLI
+
+Requires macOS/Linux, Python 3.11+, Git, and a Codex CLI with plugin and lifecycle hook support. Tested with Codex CLI 0.154.0. Python runs internally; you do not launch Codex through a Python script.
+
+Download and install once:
 
 ```sh
-python3 plugins/self-compact/scripts/setup.py configure \
-  --note-instructions 'Preserve the goal, decisions, changed files, unfinished work, and next action. Include the test command to run next.'
+git clone https://github.com/fnwokobia/self-compact.git
+cd self-compact
+./self-compact install
 ```
 
-Inspect configuration or a particular session:
+Start Codex normally:
 
 ```sh
-python3 plugins/self-compact/scripts/self_compact.py status
-python3 plugins/self-compact/scripts/self_compact.py status --session SESSION_ID
+codex
 ```
 
-## Behavior
+On the first session, run `/hooks` and review/trust the self-compact hooks. This is required by Codex for non-managed plugin hooks. Afterward, the installed plugin runs automatically in ordinary sessions; no wrapper or repeated parameters are required.
 
-- `SessionStart` automatically loads plugin instructions and state.
-- Prompt, tool, and stop hooks inspect current context usage from the session transcript's most recent token event. Cumulative spending and file size are not used as context estimates.
-- Threshold crossings produce CLI warnings once per compaction cycle. Hooks run at lifecycle points; this is not a continuously updating footer.
-- At the warning threshold, the `Stop` hook asks the agent for a short internal handoff note. A second hook saves that response, then asks the agent to continue the original task. This can display the internal note in terminal output. Requests are bounded to avoid continuation loops.
-- Codex's **native automatic compaction** owns the trigger. Setup applies `model_auto_compact_token_limit` with `model_auto_compact_token_limit_scope = "total"`.
-- Immediately before every manual or automatic compaction, `PreCompact` saves and verifies a current local checkpoint containing recent transcript excerpts and any earlier agent note. If the agent hasn't written a note yet, this checkpoint is the fallback. It is explicitly labeled as a local checkpoint, not an agent-authored summary.
-- If no usable checkpoint exists or its write/verification fails, the hook returns `continue: false` to stop compaction. Hook crashes/timeouts themselves remain subject to Codex's advisory error behavior.
-- After compaction, `SessionStart` with source `compact` injects the saved checkpoint into the next model request. State is reset for the next cycle, and old token telemetry is ignored until a new event arrives.
-- If a cycle leaves context above the cutoff and barely reduces it, a guard stops a repeated automatic-compaction attempt with an actionable message. Manual compaction remains available.
-
-Notes use atomic rename, file and directory fsync, private temporary file permissions, and SHA-256 verification. Per-session file locks prevent concurrent hooks from corrupting state. Notes and event logs remain under `~/.codex/self-compact/sessions/`; session ids are hashed into safe directory names. Separate agent-note and checkpoint files preserve the original agent response even when the checkpoint excerpt is bounded.
-
-## Practical limits
-
-The CLI does not expose a plugin hook that directly calls compaction. This implementation configures and coordinates native compaction instead. Native compaction checks run at host-defined safe points; crossing the configured limit is not an exact hard stop. A final response may end before compaction and compaction may then happen at the next turn. The plugin does not deny project tools or claim to provide an all-tools lock.
-
-Percentage warnings use the effective window from observed telemetry. The native cutoff is converted to tokens at setup, so rerun configure if you switch to a model with a different effective window. The plugin reports a mismatch instead of silently assuming the cutoff follows that model. Higher-priority profiles, project configuration, and command-line overrides can override the native cutoff.
-
-The transcript parser targets the observed Codex CLI 0.154.0 JSONL format, which OpenAI documents as unstable. Missing telemetry is reported; it is never replaced with a fabricated percentage. Local checkpoints contain bounded recent excerpts, not a complete transcript. Codex may spill unusually large restored context to a file.
-
-## Validation
+View settings:
 
 ```sh
-python3 -m unittest discover -s tests -v
-# Opt-in: real model usage, temporary test hooks, existing login.
-python3 tests/live_cli.py
-python3 tests/live_cli.py --auto-compact
+./self-compact show
 ```
 
-The live test uses `--ignore-user-config` and explicit test-only hook definitions. Its hook-trust bypass is restricted to that subprocess and is never persisted or enabled by the installer. Native package discovery is checked separately through `codex plugin list`.
+Configure thresholds or note requirements:
 
-On 6 October 2026, 13 focused offline tests passed. A real CLI run requested and saved an agent note, then continued successfully. Another real CLI run crossed a temporary 26,000-token cutoff; at the next turn native `auto` compaction invoked `PreCompact`, saved a 6,577-byte checkpoint, completed compaction, and restored the identical SHA-256 before the model returned `CLI_PLUGIN_OK`. See `evidence/plugin-cli-auto-compaction.jsonl` for the hook trace. The live tests used temporary test thresholds; they do not establish that the example percentage defaults are optimal. The repeat-compaction guard was tested offline.
+```sh
+./self-compact configure --notice '40%' --warning '55%' --compact '65%' --context-window 258400
+./self-compact configure --note-instructions 'Preserve unfinished tasks, decisions, and the exact next action.'
+```
 
-The earlier `prototype/` remains an app-server transaction experiment; it is not the plugin's implementation.
+Restart Codex after changing the native compaction cutoff. The context window must be the effective window reported by your Codex model. The bundled 258,400-token window and 40% / 55% / 65% thresholds are example values; configure them for your model. Absolute token thresholds are also supported.
 
-Sources: [Codex lifecycle hooks](https://learn.chatgpt.com/docs/hooks), [plugin packaging](https://developers.openai.com/plugins/build/plugins), and [native compaction configuration schema](https://learn.chatgpt.com/docs/config-schema.json).
+Uninstall:
+
+```sh
+./self-compact uninstall
+```
+
+Restart Codex. Removal unregisters the plugin and restores the native compaction settings recorded before setup, while preserving unrelated settings. If you subsequently edited the managed settings, removal leaves them unchanged and reports how to finish cleanup. Saved notes, preferences, backups, and the marketplace source registration are retained.
+
+Keep this checkout for management commands. Codex caches the installed plugin and loads it through its native plugin system. Personal settings and notes live under `~/.codex/self-compact/`, or your configured `CODEX_HOME`. No installation is performed merely by cloning this repository.
+
+## How the versions differ
+
+Pi directly owns tool locking, note saving, compaction, and automatic continuation. The Codex plugin coordinates Codex's native automatic compaction through lifecycle hooks; the host controls when compaction starts. It does not provide Pi's all-tools lock or identical timing. See [Codex behavior and limits](plugins/self-compact/README.md).
+
+The public source tree contains runtime code, configuration, prompts, packaging support, and documentation. Development tests, prototypes, research notes, and generated session evidence are excluded from the current tree.
+
+## Attribution
+
+The Pi lifecycle engine is adapted from [Indy Dev Dan's self-compact-pi-agent](https://github.com/disler/self-compact-pi-agent). Its MIT license and change attribution are included in [pi/LICENSE](pi/LICENSE) and [pi/NOTICE.md](pi/NOTICE.md).

@@ -13,7 +13,7 @@ subprocess.run(
     cwd=root, check=True,
 )
 archive = dist / f"{manifest['name']}-{manifest['version']}-source.tar.gz"
-excluded = {"dist", "verification", "node_modules", ".git", "__pycache__"}
+excluded = {"dist", "verification", "node_modules", ".git", "__pycache__", "tests"}
 with tarfile.open(archive, "w:gz") as bundle:
     for path in sorted(root.rglob("*")):
         relative = path.relative_to(root)
