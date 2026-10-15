@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# The one validation entry point for the Claude Code subtree.
+# Run this before reporting that anything here works.
+set -euo pipefail
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PY="${SELF_COMPACT_PYTHON:-python3}"
+command -v "$PY" >/dev/null || { echo "validate: no $PY on PATH" >&2; exit 2; }
+echo "validate: $("$PY" -V) at $(command -v "$PY")"
+cd "$ROOT"
+"$PY" -m unittest discover -s statusline/tests -t statusline/tests -v 2>&1 | tail -25

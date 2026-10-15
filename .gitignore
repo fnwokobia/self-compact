@@ -14,6 +14,12 @@ evidence/*
 # Local development artifacts are retained locally, not distributed.
 tests/
 pi/tests/
+
+# ...except claude/'s, which are not a development artifact: they ARE the gate that
+# claude/scripts/validate runs, and claude/README.md tells readers to run it. The
+# pattern above is bare, so it matches a `tests/` directory at any depth; this
+# re-includes just this one.
+!claude/statusline/tests/
 prototype/
 RESEARCH.md
 evidence/
